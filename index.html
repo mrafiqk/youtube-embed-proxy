@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>YouTube Embed Relay</title>
   <style>
     html, body { height: 100%; margin: 0; background: #000; }
@@ -12,79 +11,79 @@
 </head>
 <body>
 
-  <!-- IMPORTANT: YouTube API will create the iframe automatically -->
   <div id="player"></div>
 
   <script>
-    const u = new URL(location.href);
-    const v = u.searchParams.get('v');
+    const url = new URL(location.href);
+    const videoId = url.searchParams.get("v");
 
-    if (!v) {
-      document.body.textContent = 'Missing ?v=VIDEO_ID';
+    if (!videoId) {
+      document.body.textContent = "Missing ?v=VIDEO_ID";
     }
 
-    // Player configuration
     let ytPlayer;
+
     const playerConfig = {
-      videoId: v,
+      videoId,
       playerVars: {
         enablejsapi: 1,
-        rel: 0,
+        playsinline: 1,
         modestbranding: 1,
-        playsinline: u.searchParams.get('playsinline') || '1',
-        autoplay: u.searchParams.get('autoplay') || '0',
         origin: location.origin
       },
       events: {
         onReady: () => {
-          // Listen for commands from Ionic app
-          window.addEventListener(v, (event) => {
-            const action = event.data;
-
-            switch (action) {
-              case "play":
-                ytPlayer.playVideo();
-                break;
-              case "pause":
-                ytPlayer.pauseVideo();
-                break;
-              case "stop":
-                ytPlayer.stopVideo();
-                break;
-              case "mute":
-                ytPlayer.mute();
-                break;
-              case "unmute":
-                ytPlayer.unMute();
-                break;
-              case "get-time":
-                event.source.postMessage(
-                  { currentTime: ytPlayer.getCurrentTime() },
-                  "*"
-                );
-                break;
-              case "get-state":
-                event.source.postMessage(
-                  { state: ytPlayer.getPlayerState() },
-                  "*"
-                );
-                break;
+          // Notify Ionic
+          window.parent.dispatchEvent(new CustomEvent(videoId, {
+            detail: {
+              ready: true,
             }
-          });
+          }));
+        },
+        onStateChange: (event) => {
+          // Notify Ionic of state change
+          window.parent.dispatchEvent(new CustomEvent(videoId, {
+            detail: {
+              state: event.data,
+            }
+          }));
         }
       }
     };
 
-    // Load YouTube iframe API
-    const tag = document.createElement('script');
+    // Load YouTube API
+    const tag = document.createElement("script");
     tag.src = "https://www.youtube.com/iframe_api";
     document.body.appendChild(tag);
 
-    // YouTube API callback
     function onYouTubeIframeAPIReady() {
-      ytPlayer = new YT.Player('player', playerConfig);
+      ytPlayer = new YT.Player("player", playerConfig);
     }
-  </script>
 
+    // Receive commands from Ionic
+    window.addEventListener("message", (event) => {
+      const action = event.data;
+
+      switch (action) {
+        case "play": ytPlayer.playVideo(); break;
+        case "pause": ytPlayer.pauseVideo(); break;
+        case "stop": ytPlayer.stopVideo(); break;
+        case "mute": ytPlayer.mute(); break;
+        case "unmute": ytPlayer.unMute(); break;
+
+        case "get-time":
+          window.parent.dispatchEvent(new CustomEvent(videoId, {
+            detail: { time: ytPlayer.getCurrentTime() }
+          }));
+          break;
+
+        case "get-state":
+          window.parent.dispatchEvent(new CustomEvent(videoId, {
+            detail: { state: ytPlayer.getPlayerState() }
+          }));
+          break;
+      }
+    });
+  </script>
 </body>
 </html>

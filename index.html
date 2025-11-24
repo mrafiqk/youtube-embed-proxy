@@ -38,7 +38,7 @@
       events: {
         onReady: () => {
           // Listen for commands from Ionic app
-          window.addEventListener("message", (event) => {
+          window.addEventListener(v, (event) => {
             const action = event.data;
 
             switch (action) {
